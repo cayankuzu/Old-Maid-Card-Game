@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Üç bilgisayar rakibine karşı oynanabilen Papaz Kaçtı kart oyunu."
+    />
+    <title>Papaz Kaçtı</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="game.js" defer></script>
+  </head>
+  <body>
+    <main class="table">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">DÖRT KİŞİLİK KART OYUNU</p>
+          <h1>Papaz Kaçtı</h1>
+          <p class="intro">
+            Çiftlerini masadan çıkar. Sıran geldiğinde sağındaki oyuncunun kapalı
+            kartlarından birini seç. Son papaz sende kalmasın.
+          </p>
+        </div>
+        <button type="button" class="reset-button" id="resetButton">Kartları dağıt</button>
+      </header>
+
+      <section class="game-status">
+        <div>
+          <span>SIRA</span>
+          <strong id="turnLabel">Sen</strong>
+        </div>
+        <p id="status" aria-live="polite">Bir kart seç.</p>
+        <div>
+          <span>KALAN KART</span>
+          <strong id="remainingCards">0</strong>
+        </div>
+      </section>
+
+      <section class="opponents" aria-label="Rakip oyuncular" id="opponents"></section>
+
+      <section class="draw-zone" aria-labelledby="drawTitle">
+        <div>
+          <p class="eyebrow">KART ÇEK</p>
+          <h2 id="drawTitle">Sağındaki oyuncunun elinden seç</h2>
+        </div>
+        <div class="draw-hand" id="drawHand" aria-live="polite"></div>
+      </section>
+
+      <section class="your-hand" aria-labelledby="handTitle">
+        <div class="hand-heading">
+          <div>
+            <p class="eyebrow">SENİN ELİN</p>
+            <h2 id="handTitle">Çiftsiz kartların</h2>
+          </div>
+          <span id="playerState">Oyunda</span>
+        </div>
+        <div class="hand" id="playerHand"></div>
+      </section>
+
+      <section class="round-log" aria-labelledby="logTitle">
+        <p class="eyebrow" id="logTitle">MASA GÜNLÜĞÜ</p>
+        <ol id="gameLog"></ol>
+      </section>
+    </main>
+  </body>
+</html>
