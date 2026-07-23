@@ -331,6 +331,28 @@ button.card-back {
   transform: translate(-50%, calc(-50% + var(--side-shift))) rotate(calc(90deg + var(--rotation)));
 }
 
+.seat.is-target .table-card {
+  width: var(--pick-card-w);
+  height: calc(var(--pick-card-w) * 1.42);
+}
+
+.seat-top.is-target .table-card,
+.seat-bottom.is-target .table-card {
+  transform: translate(calc(-50% + var(--pick-shift)), -50%) rotate(var(--rotation));
+}
+
+.seat-bottom.is-target .table-card {
+  transform: translate(calc(-50% + var(--pick-shift)), -50%) rotate(var(--counter-rotation));
+}
+
+.seat-left.is-target .table-card {
+  transform: translate(-50%, calc(-50% + var(--pick-shift))) rotate(calc(-90deg + var(--rotation)));
+}
+
+.seat-right.is-target .table-card {
+  transform: translate(-50%, calc(-50% + var(--pick-shift))) rotate(calc(90deg + var(--rotation)));
+}
+
 .seat-top button.card-back:hover,
 .seat-top button.card-back:focus-visible,
 .seat-bottom button.card-back:hover,
@@ -351,6 +373,23 @@ button.card-back {
 .seat-left button.card-back:focus-visible {
   z-index: 40;
   transform: translate(calc(-50% + 14px), calc(-50% + var(--side-shift))) rotate(calc(-90deg + var(--rotation)));
+}
+
+.seat-top.is-target button.card-back:hover,
+.seat-top.is-target button.card-back:focus-visible,
+.seat-bottom.is-target button.card-back:hover,
+.seat-bottom.is-target button.card-back:focus-visible {
+  transform: translate(calc(-50% + var(--pick-shift)), calc(-50% - 14px)) rotate(var(--rotation));
+}
+
+.seat-right.is-target button.card-back:hover,
+.seat-right.is-target button.card-back:focus-visible {
+  transform: translate(calc(-50% - 11px), calc(-50% + var(--pick-shift))) rotate(calc(90deg + var(--rotation)));
+}
+
+.seat-left.is-target button.card-back:hover,
+.seat-left.is-target button.card-back:focus-visible {
+  transform: translate(calc(-50% + 11px), calc(-50% + var(--pick-shift))) rotate(calc(-90deg + var(--rotation)));
 }
 
 .seat.is-active .seat-meta {
@@ -677,6 +716,40 @@ button.card-back {
   .seat-bottom {
     width: 88%;
     height: 18%;
+  }
+
+  .seat-top .table-card,
+  .seat-bottom .table-card {
+    transform: translate(calc(-50% + var(--mobile-shift)), -50%) rotate(var(--rotation));
+  }
+
+  .seat-bottom .table-card {
+    transform: translate(calc(-50% + var(--mobile-shift)), -50%) rotate(var(--counter-rotation));
+  }
+
+  .seat-left .table-card {
+    transform: translate(-50%, calc(-50% + var(--mobile-side-shift))) rotate(calc(-90deg + var(--rotation)));
+  }
+
+  .seat-right .table-card {
+    transform: translate(-50%, calc(-50% + var(--mobile-side-shift))) rotate(calc(90deg + var(--rotation)));
+  }
+
+  .seat-top button.card-back:hover,
+  .seat-top button.card-back:focus-visible,
+  .seat-bottom button.card-back:hover,
+  .seat-bottom button.card-back:focus-visible {
+    transform: translate(calc(-50% + var(--mobile-shift)), calc(-50% - 14px)) rotate(var(--rotation));
+  }
+
+  .seat-right button.card-back:hover,
+  .seat-right button.card-back:focus-visible {
+    transform: translate(calc(-50% - 11px), calc(-50% + var(--mobile-side-shift))) rotate(calc(90deg + var(--rotation)));
+  }
+
+  .seat-left button.card-back:hover,
+  .seat-left button.card-back:focus-visible {
+    transform: translate(calc(-50% + 11px), calc(-50% + var(--mobile-side-shift))) rotate(calc(-90deg + var(--rotation)));
   }
 
   .seat-top {

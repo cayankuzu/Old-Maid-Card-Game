@@ -125,7 +125,9 @@ function cardFaceMarkup(card, extraClass = "") {
 function cardPosition(index, count) {
   const middle = (count - 1) / 2;
   const distance = index - middle;
-  return `--shift:${distance * 24}px;--side-shift:${distance * 15}px;--rotation:${distance * 2.8}deg;--counter-rotation:${distance * -2.8}deg;--depth:${index + 1}`;
+  const pickGap = Math.min(64, 280 / Math.max(count - 1, 1));
+  const pickCardWidth = Math.max(22, Math.min(54, pickGap - 4));
+  return `--shift:${distance * 38}px;--mobile-shift:${distance * 27}px;--side-shift:${distance * 30}px;--mobile-side-shift:${distance * 22}px;--pick-shift:${distance * pickGap}px;--pick-card-w:${pickCardWidth}px;--rotation:${distance * 2.8}deg;--counter-rotation:${distance * -2.8}deg;--depth:${index + 1}`;
 }
 
 function renderSeat(player) {
@@ -278,10 +280,12 @@ function finishGameIfNeeded() {
   return true;
 }
 
-function performDraw(playerId, cardIndex) {
-  if (gameOver || isBusy || players[playerId].hand.length === 0) return;
+function resolveDraw(playerId, cardIndex) {
+  if (gameOver || players[playerId].hand.length === 0) {
+    isBusy = false;
+    return;
+  }
 
-  isBusy = true;
   const player = players[playerId];
   const targetId = nextActivePlayer(playerId);
   const target = players[targetId];
@@ -305,8 +309,6 @@ function performDraw(playerId, cardIndex) {
   target.hand =
     targetId === 0 ? sortHumanHand(target.hand) : shuffle(target.hand);
 
-  const humanInvolved = playerId === 0 || targetId === 0;
-  const visibleCard = humanInvolved || Boolean(pair);
   if (playerId === 0) {
     lastActionState = {
       label: "SEN ÇEKTİN",
@@ -314,16 +316,16 @@ function performDraw(playerId, cardIndex) {
       detail: pair
         ? `${cardLabel(pair[0])} ile eşleşti; çift masaya açıldı.`
         : "Eşleşmedi; kart eline eklendi.",
-      card: drawnCard,
+      card: null,
     };
   } else if (targetId === 0) {
     lastActionState = {
       label: "SENDEN ÇEKİLDİ",
-      title: `${player.name}, ${cardLabel(drawnCard)} kartını aldı`,
+      title: `${player.name} senden kapalı bir kart aldı`,
       detail: pair
         ? "Çekilen kart eşleşti ve çift masaya açıldı."
         : "Kart rakibin elinde kaldı.",
-      card: drawnCard,
+      card: null,
     };
   } else {
     lastActionState = {
@@ -332,7 +334,7 @@ function performDraw(playerId, cardIndex) {
       detail: pair
         ? `${cardLabel(drawnCard)} ile bir çift açıldı.`
         : "Kapalı kart rakibin eline geçti.",
-      card: visibleCard ? drawnCard : null,
+      card: null,
     };
   }
 
@@ -356,9 +358,36 @@ function performDraw(playerId, cardIndex) {
   }, 950);
 }
 
+function performDraw(playerId, cardIndex) {
+  if (gameOver || isBusy || players[playerId].hand.length === 0) return;
+
+  isBusy = true;
+  resolveDraw(playerId, cardIndex);
+}
+
 function humanTurn(cardIndex) {
-  if (currentPlayerId !== 0 || rulesOpen) return;
-  performDraw(0, cardIndex);
+  if (currentPlayerId !== 0 || rulesOpen || gameOver || isBusy) return;
+
+  const targetId = nextActivePlayer(0);
+  const target = players[targetId];
+  if (!target || target.hand.length === 0) return;
+
+  const safeIndex = Math.max(0, Math.min(cardIndex, target.hand.length - 1));
+  const selectedCard = target.hand[safeIndex];
+
+  isBusy = true;
+  lastActionState = {
+    label: "SEÇTİĞİN KART",
+    title: `${target.name} oyuncusundan ${cardLabel(selectedCard)}`,
+    detail: "Kart iki saniye açık kalacak; ardından hamle işlenecek.",
+    card: selectedCard,
+  };
+  statusElement.textContent = `${cardLabel(selectedCard)} kartını seçtin.`;
+  render();
+
+  transitionTimer = window.setTimeout(() => {
+    resolveDraw(0, safeIndex);
+  }, 2000);
 }
 
 function scheduleBotTurn() {
@@ -410,7 +439,8 @@ function deal() {
 resetButton.addEventListener("click", deal);
 newRoundButton.addEventListener("click", deal);
 helpButton.addEventListener("click", () => {
-  clearGameTimers();
+  window.clearTimeout(botTimer);
+  botTimer = null;
   rulesOpen = true;
   closeRules.textContent = "Oyuna dön";
   rulesOverlay.classList.add("is-visible");
