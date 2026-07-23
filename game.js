@@ -13,6 +13,7 @@ let activeOrder = [];
 let currentPlayerId = 0;
 let gameOver = false;
 let isBusy = false;
+let rulesOpen = true;
 let logEntries = [];
 
 const opponentsElement = document.querySelector("#opponents");
@@ -24,6 +25,9 @@ const remainingCardsElement = document.querySelector("#remainingCards");
 const playerStateElement = document.querySelector("#playerState");
 const gameLog = document.querySelector("#gameLog");
 const resetButton = document.querySelector("#resetButton");
+const helpButton = document.querySelector("#helpButton");
+const rulesOverlay = document.querySelector("#rulesOverlay");
+const closeRules = document.querySelector("#closeRules");
 
 function shuffle(items) {
   const result = [...items];
@@ -259,7 +263,7 @@ function humanTurn(cardIndex) {
 }
 
 function botTurn() {
-  if (gameOver || currentPlayerId === 0) return;
+  if (rulesOpen || gameOver || currentPlayerId === 0) return;
   isBusy = true;
   const playerId = currentPlayerId;
   const targetId = nextActivePlayer(playerId);
@@ -272,8 +276,18 @@ function botTurn() {
 }
 
 function scheduleBotIfNeeded() {
-  if (!gameOver && currentPlayerId !== 0) window.setTimeout(botTurn, 900);
+  if (!rulesOpen && !gameOver && currentPlayerId !== 0) window.setTimeout(botTurn, 900);
 }
 
 resetButton.addEventListener("click", deal);
+helpButton.addEventListener("click", () => {
+  rulesOpen = true;
+  closeRules.textContent = "Oyuna dön";
+  rulesOverlay.classList.add("is-visible");
+});
+closeRules.addEventListener("click", () => {
+  rulesOpen = false;
+  rulesOverlay.classList.remove("is-visible");
+  scheduleBotIfNeeded();
+});
 deal();

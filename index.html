@@ -22,7 +22,10 @@
             kartlarından birini seç. Son papaz sende kalmasın.
           </p>
         </div>
-        <button type="button" class="reset-button" id="resetButton">Kartları dağıt</button>
+        <div class="hero-actions">
+          <button type="button" class="reset-button" id="helpButton">Yardım</button>
+          <button type="button" class="reset-button" id="resetButton">Kartları dağıt</button>
+        </div>
       </header>
 
       <section class="game-status">
@@ -63,5 +66,19 @@
         <ol id="gameLog"></ol>
       </section>
     </main>
+    <div class="rules-overlay is-visible" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <section class="rules-dialog">
+        <p class="eyebrow">NASIL OYNANIR?</p>
+        <h2 id="rulesTitle">Papaz sende kalmasın</h2>
+        <p>Oyun başında aynı değerdeki kart çiftleri otomatik olarak masadan çıkarılır.</p>
+        <ul>
+          <li>Sıra sana geldiğinde sağındaki oyuncunun kapalı kartlarından birini seç.</li>
+          <li>Çektiğin kart elindeki bir kartla eşleşirse çift otomatik açılır.</li>
+          <li>Kartlarını ilk bitiren oyuncular oyundan kurtulur.</li>
+          <li>Eşsiz son papaz hangi oyuncuda kalırsa o oyuncu eli kaybeder.</li>
+        </ul>
+        <button class="rules-primary" id="closeRules" type="button">Oyuna başla</button>
+      </section>
+    </div>
   </body>
 </html>

@@ -40,6 +40,12 @@ button {
   gap: 24px;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
 .eyebrow {
   margin: 0 0 7px;
   color: var(--gold);
@@ -325,6 +331,56 @@ h2 {
   color: #99ac9f;
   background: rgba(0, 0, 0, 0.15);
   font-size: 0.77rem;
+}
+
+.rules-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: none;
+  padding: 20px;
+  place-items: center;
+  background: rgba(3, 14, 10, .78);
+  backdrop-filter: blur(10px);
+}
+
+.rules-overlay.is-visible { display: grid; }
+
+.rules-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  padding: clamp(26px, 6vw, 48px);
+  border: 1px solid rgba(246, 240, 223, .17);
+  border-radius: 24px;
+  background: #0b281d;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .55);
+}
+
+.rules-dialog h2 {
+  margin: 0;
+  font: 500 clamp(2rem, 6vw, 3.5rem)/1 Georgia, "Times New Roman", serif;
+  letter-spacing: -.04em;
+}
+
+.rules-dialog > p:not(.eyebrow),
+.rules-dialog li {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.rules-dialog ul { margin: 18px 0 24px; padding-left: 20px; }
+.rules-dialog li + li { margin-top: 8px; }
+
+.rules-primary {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 999px;
+  color: #17120a;
+  background: var(--gold);
+  font-weight: 900;
+  cursor: pointer;
 }
 
 @media (max-width: 740px) {
