@@ -19,3 +19,9 @@ python old_maid_game.py
 ```
 
 Proje yalnızca Python standart kütüphanesini kullanır.
+
+## Web sürümü
+
+[Papaz Kaçtı'yı tarayıcıda oyna](https://old-maid-card-game.vercel.app/)
+
+Web sürümünde oyuncu, üç bilgisayar rakibine karşı kapalı kartlardan seçim yapar; çiftler ve rakip turları otomatik işlenir.
