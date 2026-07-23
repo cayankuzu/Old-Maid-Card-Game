@@ -24,4 +24,7 @@ Proje yalnızca Python standart kütüphanesini kullanır.
 
 [Papaz Kaçtı'yı tarayıcıda oyna](https://old-maid-card-game.vercel.app/)
 
-Web sürümünde oyuncu, üç bilgisayar rakibine karşı kapalı kartlardan seçim yapar; çiftler ve rakip turları otomatik işlenir.
+Web sürümünde destede yalnızca bir papaz bırakılır. Oyuncu, gerçek masa
+düzeninde üç bilgisayar rakibine karşı sağındaki kapalı elden seçim yapar.
+Dağıtım ve bilgisayar seçimleri her elde rastgeledir; açılan çiftler, oyuncunun
+çektiği kart ve oyuncudan çekilen kart masa üzerinde görünür.

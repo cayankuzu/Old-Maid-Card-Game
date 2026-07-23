@@ -1,7 +1,10 @@
 const suits = ["♣", "♦", "♥", "♠"];
 const ranks = [
   { value: 1, label: "A" },
-  ...Array.from({ length: 9 }, (_, index) => ({ value: index + 2, label: String(index + 2) })),
+  ...Array.from({ length: 9 }, (_, index) => ({
+    value: index + 2,
+    label: String(index + 2),
+  })),
   { value: 11, label: "J" },
   { value: 12, label: "Q" },
   { value: 13, label: "K" },
@@ -9,25 +12,32 @@ const ranks = [
 const playerNames = ["Sen", "Ada", "Efe", "Mina"];
 
 let players = [];
-let activeOrder = [];
 let currentPlayerId = 0;
+let dealerId = 0;
+let discardedPairs = [];
 let gameOver = false;
 let isBusy = false;
 let rulesOpen = true;
-let logEntries = [];
+let botTimer = null;
+let transitionTimer = null;
+let lastActionState = null;
 
-const opponentsElement = document.querySelector("#opponents");
-const drawHandElement = document.querySelector("#drawHand");
-const playerHandElement = document.querySelector("#playerHand");
 const statusElement = document.querySelector("#status");
 const turnLabel = document.querySelector("#turnLabel");
 const remainingCardsElement = document.querySelector("#remainingCards");
-const playerStateElement = document.querySelector("#playerState");
-const gameLog = document.querySelector("#gameLog");
+const discardCountElement = document.querySelector("#discardCount");
+const discardPileElement = document.querySelector("#discardPile");
+const dealerLabel = document.querySelector("#dealerLabel");
+const lastActionElement = document.querySelector("#lastAction");
+const pickMarker = document.querySelector("#pickMarker");
 const resetButton = document.querySelector("#resetButton");
 const helpButton = document.querySelector("#helpButton");
 const rulesOverlay = document.querySelector("#rulesOverlay");
 const closeRules = document.querySelector("#closeRules");
+const resultOverlay = document.querySelector("#resultOverlay");
+const resultTitle = document.querySelector("#resultTitle");
+const resultText = document.querySelector("#resultText");
+const newRoundButton = document.querySelector("#newRoundButton");
 
 function shuffle(items) {
   const result = [...items];
@@ -39,248 +49,368 @@ function shuffle(items) {
 }
 
 function createDeck() {
+  const deck = suits.flatMap((suit) =>
+    ranks.map((rank) => ({ suit, ...rank, id: `${rank.label}-${suit}` })),
+  );
+
   return shuffle(
-    suits
-      .flatMap((suit) => ranks.map((rank) => ({ suit, ...rank })))
-      .filter((card) => !(card.value === 13 && card.suit === "♣")),
+    deck.filter((card) => card.value !== 13 || card.suit === "♠"),
   );
 }
 
-function removePairs(hand) {
-  const byRank = new Map();
+function removeInitialPairs(hand, playerId) {
+  const groups = new Map();
   hand.forEach((card) => {
-    const cards = byRank.get(card.value) ?? [];
-    cards.push(card);
-    byRank.set(card.value, cards);
+    const group = groups.get(card.value) ?? [];
+    group.push(card);
+    groups.set(card.value, group);
   });
 
   const remaining = [];
-  let pairCount = 0;
-  byRank.forEach((cards) => {
-    pairCount += Math.floor(cards.length / 2);
-    if (cards.length % 2 === 1) remaining.push(cards[0]);
+  groups.forEach((cards) => {
+    const randomized = shuffle(cards);
+    while (randomized.length >= 2) {
+      discardedPairs.push({
+        playerId,
+        cards: [randomized.pop(), randomized.pop()],
+      });
+    }
+    if (randomized.length === 1) remaining.push(randomized[0]);
   });
 
-  return { hand: shuffle(remaining), pairCount };
+  return shuffle(remaining);
 }
 
-function addLog(message) {
-  logEntries.unshift(message);
+function activePlayerIds() {
+  return players.filter((player) => player.hand.length > 0).map((player) => player.id);
 }
 
-function nextActivePlayer(playerId) {
-  const index = activeOrder.indexOf(playerId);
-  return activeOrder[(index + 1) % activeOrder.length];
+function nextActivePlayer(fromPlayerId) {
+  for (let step = 1; step <= players.length; step += 1) {
+    const candidate = (fromPlayerId + step) % players.length;
+    if (players[candidate].hand.length > 0) return candidate;
+  }
+  return fromPlayerId;
 }
 
 function cardLabel(card) {
   return `${card.label}${card.suit}`;
 }
 
-function deal() {
-  players = playerNames.map((name, id) => ({ id, name, hand: [], escaped: false }));
-  createDeck().forEach((card, index) => players[index % players.length].hand.push(card));
-  logEntries = [];
+function isRed(card) {
+  return card.suit === "♦" || card.suit === "♥";
+}
 
-  players.forEach((player) => {
-    const result = removePairs(player.hand);
-    player.hand = result.hand;
-    if (result.pairCount > 0) {
-      addLog(`${player.name} ${result.pairCount} çift açtı.`);
-    }
+function sortHumanHand(hand) {
+  return [...hand].sort((first, second) => {
+    if (first.value !== second.value) return first.value - second.value;
+    return suits.indexOf(first.suit) - suits.indexOf(second.suit);
   });
-
-  activeOrder = players.filter((player) => player.hand.length > 0).map((player) => player.id);
-  players
-    .filter((player) => player.hand.length === 0)
-    .forEach((player) => {
-      player.escaped = true;
-    });
-  currentPlayerId = activeOrder.includes(0) ? 0 : activeOrder[0];
-  gameOver = false;
-  isBusy = false;
-  statusElement.textContent = "Sağındaki oyuncudan bir kart seç.";
-  addLog("Kartlar dağıtıldı, çiftler masadan çıkarıldı.");
-  render();
-  scheduleBotIfNeeded();
 }
 
-function renderOpponents() {
-  opponentsElement.innerHTML = players
-    .slice(1)
-    .map((player) => {
-      const cards = Array.from(
-        { length: Math.min(player.hand.length, 9) },
-        (_, index) => `<span class="mini-card" style="--index:${index}"></span>`,
-      ).join("");
-      return `
-        <article class="opponent ${currentPlayerId === player.id ? "is-active" : ""} ${player.escaped ? "is-out" : ""}">
-          <div class="opponent-head">
-            <h3>${player.name}</h3>
-            <span>${player.escaped ? "Kurtuldu" : `${player.hand.length} kart`}</span>
-          </div>
-          <div class="mini-hand">${cards}</div>
-        </article>
-      `;
-    })
-    .join("");
+function cardFaceMarkup(card, extraClass = "") {
+  return `
+    <span
+      class="table-card card-face ${isRed(card) ? "is-red" : ""} ${extraClass}"
+      data-card="${cardLabel(card)}"
+      aria-label="${cardLabel(card)}"
+    >
+      <span class="card-corner">${card.label}<small>${card.suit}</small></span>
+      <b>${card.suit}</b>
+      <span class="card-corner card-corner-bottom">${card.label}<small>${card.suit}</small></span>
+    </span>
+  `;
 }
 
-function renderDrawHand() {
-  if (gameOver || currentPlayerId !== 0 || !activeOrder.includes(0)) {
-    drawHandElement.innerHTML = `<div class="empty-state">${
-      gameOver ? "Oyun tamamlandı." : "Rakipler hamle yapıyor…"
-    }</div>`;
+function cardPosition(index, count) {
+  const middle = (count - 1) / 2;
+  const distance = index - middle;
+  return `--shift:${distance * 24}px;--side-shift:${distance * 15}px;--rotation:${distance * 2.8}deg;--counter-rotation:${distance * -2.8}deg;--depth:${index + 1}`;
+}
+
+function renderSeat(player) {
+  const seat = document.querySelector(`#seat-${player.id}`);
+  const handElement = document.querySelector(`#hand-${player.id}`);
+  const countElement = document.querySelector(`#count-${player.id}`);
+  const isHumanTurn = currentPlayerId === 0 && !gameOver;
+  const targetId = isHumanTurn ? nextActivePlayer(0) : -1;
+
+  seat.classList.toggle("is-active", currentPlayerId === player.id && !gameOver);
+  seat.classList.toggle("is-target", targetId === player.id && !isBusy);
+  seat.classList.toggle("is-out", player.escaped);
+  countElement.textContent = player.escaped ? "Kurtuldu" : `${player.hand.length} kart`;
+
+  if (player.hand.length === 0) {
+    handElement.innerHTML = '<span class="empty-hand">EL BİTTİ</span>';
     return;
   }
 
-  const target = players[nextActivePlayer(0)];
-  const middle = (target.hand.length - 1) / 2;
-  drawHandElement.innerHTML = target.hand
+  if (player.id === 0) {
+    handElement.innerHTML = player.hand
+      .map((card, index) =>
+        cardFaceMarkup(
+          card,
+          "human-card",
+        ).replace(
+          'class="table-card',
+          `style="${cardPosition(index, player.hand.length)}" class="table-card`,
+        ),
+      )
+      .join("");
+    return;
+  }
+
+  const canPick = targetId === player.id && !isBusy;
+  handElement.innerHTML = player.hand
     .map(
       (_, index) => `
-        <button
-          class="draw-card"
-          type="button"
-          style="--index:${index};--middle:${middle};--offset:${Math.abs(index - middle)}"
-          aria-label="${target.name} oyuncusunun ${index + 1}. kartını çek"
-          data-card-index="${index}"
-          ${isBusy ? "disabled" : ""}
-        ></button>
+        <${canPick ? "button" : "span"}
+          class="table-card card-back"
+          style="${cardPosition(index, player.hand.length)}"
+          ${canPick ? `type="button" data-card-index="${index}" aria-label="${player.name} oyuncusunun ${index + 1}. kapalı kartını çek"` : 'aria-hidden="true"'}
+        ></${canPick ? "button" : "span"}>
       `,
     )
     .join("");
 
-  drawHandElement.querySelectorAll(".draw-card").forEach((button) => {
-    button.addEventListener("click", () => humanTurn(Number(button.dataset.cardIndex)));
-  });
-}
-
-function renderPlayerHand() {
-  const human = players[0];
-  if (human.hand.length === 0) {
-    playerHandElement.innerHTML = '<div class="empty-state">Elinde kart kalmadı.</div>';
-  } else {
-    playerHandElement.innerHTML = human.hand
-      .map((card) => {
-        const red = card.suit === "♦" || card.suit === "♥";
-        return `
-          <span class="playing-card ${red ? "red" : ""}" data-card="${cardLabel(card)}">
-            ${cardLabel(card)}
-          </span>
-        `;
-      })
-      .join("");
+  if (canPick) {
+    handElement.querySelectorAll("[data-card-index]").forEach((button) => {
+      button.addEventListener("click", () => {
+        humanTurn(Number(button.dataset.cardIndex));
+      });
+    });
   }
-  playerStateElement.textContent = human.escaped
-    ? "Kurtuldun"
-    : gameOver && activeOrder[0] === 0
-      ? "Papaz sende kaldı"
-      : "Oyunda";
 }
 
-function render() {
-  renderOpponents();
-  renderDrawHand();
-  renderPlayerHand();
-  turnLabel.textContent = gameOver ? "Bitti" : players[currentPlayerId]?.name ?? "—";
-  remainingCardsElement.textContent = players.reduce(
-    (total, player) => total + player.hand.length,
-    0,
-  );
-  gameLog.innerHTML = logEntries
-    .slice(0, 6)
-    .map((entry) => `<li>${entry}</li>`)
+function renderDiscardPile() {
+  const latestPair = discardedPairs.at(-1);
+  discardCountElement.textContent = discardedPairs.length;
+  if (!latestPair) {
+    discardPileElement.innerHTML = `
+      <span class="discard-placeholder"></span>
+      <span class="discard-placeholder"></span>
+    `;
+    return;
+  }
+
+  discardPileElement.innerHTML = latestPair.cards
+    .map((card) => cardFaceMarkup(card, "discard-card"))
     .join("");
 }
 
-function drawFromPlayer(playerId, targetId, cardIndex) {
-  const player = players[playerId];
-  const target = players[targetId];
-  const [card] = target.hand.splice(cardIndex, 1);
-  player.hand.push(card);
-  const result = removePairs(player.hand);
-  player.hand = result.hand;
-
-  addLog(
-    `${player.name}, ${target.name} oyuncusundan kart çekti${
-      result.pairCount ? ` ve ${result.pairCount} çift açtı` : ""
-    }.`,
-  );
-
-  return card;
-}
-
-function updateActivePlayers() {
-  players.forEach((player) => {
-    if (player.hand.length === 0 && !player.escaped) {
-      player.escaped = true;
-      addLog(`${player.name} kartlarını bitirdi ve kurtuldu.`);
-    }
-  });
-  activeOrder = activeOrder.filter((id) => players[id].hand.length > 0);
-
-  if (activeOrder.length === 1) {
-    gameOver = true;
-    const loser = players[activeOrder[0]];
-    currentPlayerId = loser.id;
-    statusElement.textContent =
-      loser.id === 0
-        ? "Son papaz sende kaldı. Bu eli kaybettin."
-        : `Son papaz ${loser.name} oyuncusunda kaldı. Kazandın!`;
-    addLog(`${loser.name} son papazla kaldı.`);
-    isBusy = false;
-    render();
-    return true;
+function renderLastAction() {
+  if (!lastActionState) {
+    lastActionElement.innerHTML = `
+      <div class="action-card-placeholder" aria-hidden="true">?</div>
+      <div>
+        <span>SON HAMLE</span>
+        <strong>Kartlar rastgele dağıtıldı</strong>
+        <p>Çiftler açıldı. Eşsiz papaz masada.</p>
+      </div>
+    `;
+    return;
   }
-  return false;
+
+  const visual = lastActionState.card
+    ? cardFaceMarkup(lastActionState.card, "action-card")
+    : '<span class="table-card card-back action-card" aria-hidden="true"></span>';
+  lastActionElement.innerHTML = `
+    ${visual}
+    <div>
+      <span>${lastActionState.label}</span>
+      <strong>${lastActionState.title}</strong>
+      <p>${lastActionState.detail}</p>
+    </div>
+  `;
 }
 
-function advanceTurn(fromPlayerId) {
-  if (updateActivePlayers()) return;
-  const currentIndex = activeOrder.indexOf(fromPlayerId);
-  currentPlayerId =
-    currentIndex === -1
-      ? activeOrder[0]
-      : activeOrder[(currentIndex + 1) % activeOrder.length];
+function render() {
+  players.forEach(renderSeat);
+  renderDiscardPile();
+  renderLastAction();
+
+  const totalCards = players.reduce((total, player) => total + player.hand.length, 0);
+  remainingCardsElement.textContent = totalCards;
+  dealerLabel.textContent = `Dağıtan: ${players[dealerId]?.name ?? "—"}`;
+  turnLabel.textContent = gameOver ? "El bitti" : players[currentPlayerId]?.name ?? "—";
+
+  const targetId =
+    currentPlayerId === 0 && !gameOver && !isBusy ? nextActivePlayer(0) : -1;
+  pickMarker.classList.toggle("is-visible", targetId !== -1);
+  if (targetId !== -1) {
+    document.querySelector(`#seat-${targetId}`).appendChild(pickMarker);
+  }
+}
+
+function clearGameTimers() {
+  window.clearTimeout(botTimer);
+  window.clearTimeout(transitionTimer);
+  botTimer = null;
+  transitionTimer = null;
+}
+
+function updateEscapedPlayers() {
+  players.forEach((player) => {
+    if (player.hand.length === 0) player.escaped = true;
+  });
+}
+
+function finishGameIfNeeded() {
+  const activeIds = activePlayerIds();
+  if (activeIds.length !== 1) return false;
+
+  gameOver = true;
   isBusy = false;
-  statusElement.textContent =
-    currentPlayerId === 0
-      ? "Sıra sende. Sağındaki oyuncudan bir kart seç."
-      : `${players[currentPlayerId].name} düşünüyor…`;
+  currentPlayerId = activeIds[0];
+  const loser = players[currentPlayerId];
+  const humanLost = loser.id === 0;
+  statusElement.textContent = humanLost
+    ? "Eşsiz papaz sende kaldı."
+    : `Eşsiz papaz ${loser.name} oyuncusunda kaldı.`;
+  resultTitle.textContent = humanLost ? "Papaz sende kaldı" : "Bu eli kazandın";
+  resultText.textContent = humanLost
+    ? "Son eşleşmeyen kartı sen tuttun. Kartları yeniden dağıtıp rövanşı başlatabilirsin."
+    : `${loser.name} eşsiz papazla kaldı. Sen kartlarını zamanında bitirdin.`;
   render();
-  scheduleBotIfNeeded();
+  transitionTimer = window.setTimeout(() => {
+    resultOverlay.classList.add("is-visible");
+  }, 800);
+  return true;
+}
+
+function performDraw(playerId, cardIndex) {
+  if (gameOver || isBusy || players[playerId].hand.length === 0) return;
+
+  isBusy = true;
+  const player = players[playerId];
+  const targetId = nextActivePlayer(playerId);
+  const target = players[targetId];
+  const safeIndex = Math.max(0, Math.min(cardIndex, target.hand.length - 1));
+  const [drawnCard] = target.hand.splice(safeIndex, 1);
+  const matchingIndex = player.hand.findIndex(
+    (card) => card.value === drawnCard.value,
+  );
+  let pair = null;
+
+  if (matchingIndex >= 0) {
+    const [matchingCard] = player.hand.splice(matchingIndex, 1);
+    pair = [matchingCard, drawnCard];
+    discardedPairs.push({ playerId, cards: pair });
+  } else {
+    player.hand.push(drawnCard);
+  }
+
+  player.hand =
+    playerId === 0 ? sortHumanHand(player.hand) : shuffle(player.hand);
+  target.hand =
+    targetId === 0 ? sortHumanHand(target.hand) : shuffle(target.hand);
+
+  const humanInvolved = playerId === 0 || targetId === 0;
+  const visibleCard = humanInvolved || Boolean(pair);
+  if (playerId === 0) {
+    lastActionState = {
+      label: "SEN ÇEKTİN",
+      title: `${target.name} oyuncusundan ${cardLabel(drawnCard)}`,
+      detail: pair
+        ? `${cardLabel(pair[0])} ile eşleşti; çift masaya açıldı.`
+        : "Eşleşmedi; kart eline eklendi.",
+      card: drawnCard,
+    };
+  } else if (targetId === 0) {
+    lastActionState = {
+      label: "SENDEN ÇEKİLDİ",
+      title: `${player.name}, ${cardLabel(drawnCard)} kartını aldı`,
+      detail: pair
+        ? "Çekilen kart eşleşti ve çift masaya açıldı."
+        : "Kart rakibin elinde kaldı.",
+      card: drawnCard,
+    };
+  } else {
+    lastActionState = {
+      label: "RAKİP HAMLESİ",
+      title: `${player.name}, ${target.name} oyuncusundan çekti`,
+      detail: pair
+        ? `${cardLabel(drawnCard)} ile bir çift açıldı.`
+        : "Kapalı kart rakibin eline geçti.",
+      card: visibleCard ? drawnCard : null,
+    };
+  }
+
+  statusElement.textContent = pair
+    ? `${player.name} bir çift açtı.`
+    : `${player.name} kartı elinde tuttu.`;
+  updateEscapedPlayers();
+  render();
+
+  if (finishGameIfNeeded()) return;
+
+  transitionTimer = window.setTimeout(() => {
+    currentPlayerId = nextActivePlayer(playerId);
+    isBusy = false;
+    statusElement.textContent =
+      currentPlayerId === 0
+        ? "Sıra sende. Sağındaki parlayan elden bir kart seç."
+        : `${players[currentPlayerId].name} kapalı bir kart seçiyor…`;
+    render();
+    scheduleBotTurn();
+  }, 950);
 }
 
 function humanTurn(cardIndex) {
-  if (gameOver || isBusy || currentPlayerId !== 0) return;
-  isBusy = true;
-  const targetId = nextActivePlayer(0);
-  const card = drawFromPlayer(0, targetId, cardIndex);
-  statusElement.textContent = `${cardLabel(card)} çektin.`;
-  render();
-  window.setTimeout(() => advanceTurn(0), 650);
+  if (currentPlayerId !== 0 || rulesOpen) return;
+  performDraw(0, cardIndex);
 }
 
-function botTurn() {
-  if (rulesOpen || gameOver || currentPlayerId === 0) return;
-  isBusy = true;
-  const playerId = currentPlayerId;
-  const targetId = nextActivePlayer(playerId);
-  const target = players[targetId];
-  const cardIndex = Math.floor(Math.random() * target.hand.length);
-  drawFromPlayer(playerId, targetId, cardIndex);
-  statusElement.textContent = `${players[playerId].name} kartını çekti.`;
-  render();
-  window.setTimeout(() => advanceTurn(playerId), 750);
+function scheduleBotTurn() {
+  window.clearTimeout(botTimer);
+  if (rulesOpen || gameOver || currentPlayerId === 0 || isBusy) return;
+
+  botTimer = window.setTimeout(() => {
+    const targetId = nextActivePlayer(currentPlayerId);
+    const target = players[targetId];
+    const randomIndex = Math.floor(Math.random() * target.hand.length);
+    performDraw(currentPlayerId, randomIndex);
+  }, 850 + Math.floor(Math.random() * 450));
 }
 
-function scheduleBotIfNeeded() {
-  if (!rulesOpen && !gameOver && currentPlayerId !== 0) window.setTimeout(botTurn, 900);
+function deal() {
+  clearGameTimers();
+  resultOverlay.classList.remove("is-visible");
+  players = playerNames.map((name, id) => ({
+    id,
+    name,
+    hand: [],
+    escaped: false,
+  }));
+  discardedPairs = [];
+  lastActionState = null;
+  gameOver = false;
+  isBusy = false;
+  dealerId = Math.floor(Math.random() * players.length);
+
+  createDeck().forEach((card, index) => {
+    const playerId = (dealerId + 1 + index) % players.length;
+    players[playerId].hand.push(card);
+  });
+  players.forEach((player) => {
+    player.hand = removeInitialPairs(player.hand, player.id);
+  });
+  players[0].hand = sortHumanHand(players[0].hand);
+  updateEscapedPlayers();
+
+  currentPlayerId = nextActivePlayer(dealerId);
+  statusElement.textContent =
+    currentPlayerId === 0
+      ? "Sıra sende. Sağındaki parlayan elden bir kart seç."
+      : `${players[currentPlayerId].name} oyuna başlıyor…`;
+  render();
+  scheduleBotTurn();
 }
 
 resetButton.addEventListener("click", deal);
+newRoundButton.addEventListener("click", deal);
 helpButton.addEventListener("click", () => {
+  clearGameTimers();
   rulesOpen = true;
   closeRules.textContent = "Oyuna dön";
   rulesOverlay.classList.add("is-visible");
@@ -288,6 +418,7 @@ helpButton.addEventListener("click", () => {
 closeRules.addEventListener("click", () => {
   rulesOpen = false;
   rulesOverlay.classList.remove("is-visible");
-  scheduleBotIfNeeded();
+  scheduleBotTurn();
 });
+
 deal();

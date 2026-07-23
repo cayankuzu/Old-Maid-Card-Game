@@ -5,79 +5,128 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Üç bilgisayar rakibine karşı oynanabilen Papaz Kaçtı kart oyunu."
+      content="Gerçek masa düzeninde, üç bilgisayar rakibine karşı Papaz Kaçtı."
     />
     <title>Papaz Kaçtı</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="game.js" defer></script>
   </head>
   <body>
-    <main class="table">
-      <header class="hero">
+    <main class="game-shell">
+      <header class="game-header">
         <div>
-          <p class="eyebrow">DÖRT KİŞİLİK KART OYUNU</p>
+          <p class="eyebrow">DÖRT KİŞİ · TEK PAPAZ</p>
           <h1>Papaz Kaçtı</h1>
-          <p class="intro">
-            Çiftlerini masadan çıkar. Sıran geldiğinde sağındaki oyuncunun kapalı
-            kartlarından birini seç. Son papaz sende kalmasın.
-          </p>
         </div>
-        <div class="hero-actions">
-          <button type="button" class="reset-button" id="helpButton">Yardım</button>
-          <button type="button" class="reset-button" id="resetButton">Kartları dağıt</button>
+        <div class="header-status">
+          <span>SIRA</span>
+          <strong id="turnLabel">—</strong>
+          <p id="status" aria-live="polite">Kartlar dağıtılıyor…</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="helpButton">Nasıl oynanır?</button>
+          <button type="button" class="primary-action" id="resetButton">
+            Yeniden dağıt
+          </button>
         </div>
       </header>
 
-      <section class="game-status">
-        <div>
-          <span>SIRA</span>
-          <strong id="turnLabel">Sen</strong>
-        </div>
-        <p id="status" aria-live="polite">Bir kart seç.</p>
-        <div>
-          <span>KALAN KART</span>
-          <strong id="remainingCards">0</strong>
-        </div>
-      </section>
+      <section class="card-table" aria-label="Papaz Kaçtı oyun masası">
+        <div class="table-grain" aria-hidden="true"></div>
 
-      <section class="opponents" aria-label="Rakip oyuncular" id="opponents"></section>
-
-      <section class="draw-zone" aria-labelledby="drawTitle">
-        <div>
-          <p class="eyebrow">KART ÇEK</p>
-          <h2 id="drawTitle">Sağındaki oyuncunun elinden seç</h2>
-        </div>
-        <div class="draw-hand" id="drawHand" aria-live="polite"></div>
-      </section>
-
-      <section class="your-hand" aria-labelledby="handTitle">
-        <div class="hand-heading">
-          <div>
-            <p class="eyebrow">SENİN ELİN</p>
-            <h2 id="handTitle">Çiftsiz kartların</h2>
+        <section class="seat seat-top" id="seat-2" aria-label="Efe'nin eli">
+          <div class="seat-meta">
+            <strong>Efe</strong>
+            <span id="count-2">0 kart</span>
           </div>
-          <span id="playerState">Oyunda</span>
-        </div>
-        <div class="hand" id="playerHand"></div>
-      </section>
+          <div class="seat-hand" id="hand-2"></div>
+        </section>
 
-      <section class="round-log" aria-labelledby="logTitle">
-        <p class="eyebrow" id="logTitle">MASA GÜNLÜĞÜ</p>
-        <ol id="gameLog"></ol>
+        <section class="seat seat-left" id="seat-3" aria-label="Mina'nın eli">
+          <div class="seat-meta">
+            <strong>Mina</strong>
+            <span id="count-3">0 kart</span>
+          </div>
+          <div class="seat-hand" id="hand-3"></div>
+        </section>
+
+        <section class="seat seat-right" id="seat-1" aria-label="Ada'nın eli">
+          <div class="seat-meta">
+            <strong>Ada</strong>
+            <span id="count-1">0 kart</span>
+          </div>
+          <div class="seat-hand" id="hand-1"></div>
+          <p class="pick-marker" id="pickMarker">BURADAN BİR KART SEÇ</p>
+        </section>
+
+        <section class="table-center" aria-label="Masa ortası">
+          <div class="discard-area">
+            <div class="discard-pile" id="discardPile" aria-hidden="true"></div>
+            <p>
+              <span>MASADAKİ ÇİFTLER</span>
+              <strong id="discardCount">0</strong>
+            </p>
+          </div>
+
+          <div class="last-action" id="lastAction" aria-live="polite">
+            <div class="action-card-placeholder" aria-hidden="true">?</div>
+            <div>
+              <span>SON HAMLE</span>
+              <strong>Kartlar karıştırılıyor</strong>
+              <p>Her el yeniden ve rastgele dağıtılır.</p>
+            </div>
+          </div>
+
+          <div class="table-stats">
+            <span><b id="remainingCards">0</b> kart oyunda</span>
+            <span id="dealerLabel">Dağıtan: —</span>
+          </div>
+        </section>
+
+        <section class="seat seat-bottom" id="seat-0" aria-label="Senin elin">
+          <div class="seat-meta">
+            <strong>Sen</strong>
+            <span id="count-0">0 kart</span>
+          </div>
+          <div class="seat-hand" id="hand-0"></div>
+        </section>
       </section>
     </main>
-    <div class="rules-overlay is-visible" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+
+    <div
+      class="rules-overlay is-visible"
+      id="rulesOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rulesTitle"
+    >
       <section class="rules-dialog">
         <p class="eyebrow">NASIL OYNANIR?</p>
         <h2 id="rulesTitle">Papaz sende kalmasın</h2>
-        <p>Oyun başında aynı değerdeki kart çiftleri otomatik olarak masadan çıkarılır.</p>
-        <ul>
-          <li>Sıra sana geldiğinde sağındaki oyuncunun kapalı kartlarından birini seç.</li>
-          <li>Çektiğin kart elindeki bir kartla eşleşirse çift otomatik açılır.</li>
-          <li>Kartlarını ilk bitiren oyuncular oyundan kurtulur.</li>
-          <li>Eşsiz son papaz hangi oyuncuda kalırsa o oyuncu eli kaybeder.</li>
-        </ul>
-        <button class="rules-primary" id="closeRules" type="button">Oyuna başla</button>
+        <p>
+          Destede yalnızca bir papaz bulunur. Kartlar rastgele dağıtılır ve aynı
+          değerdeki çiftler masaya açılır.
+        </p>
+        <ol>
+          <li>Sıra sana geldiğinde sağındaki parlayan elden kapalı bir kart seç.</li>
+          <li>Çektiğin kart eşleşirse oluşan çift otomatik olarak ortaya açılır.</li>
+          <li>Bilgisayarlar sırayla ve rastgele kart seçer; senden çekilen kart gösterilir.</li>
+          <li>Kartlarını bitiren kurtulur. Eşsiz papazla kalan eli kaybeder.</li>
+        </ol>
+        <button class="rules-primary" id="closeRules" type="button">
+          Oyuna başla
+        </button>
+      </section>
+    </div>
+
+    <div class="result-overlay" id="resultOverlay" role="dialog" aria-modal="true">
+      <section class="result-dialog">
+        <p class="eyebrow">EL TAMAMLANDI</p>
+        <h2 id="resultTitle">—</h2>
+        <p id="resultText"></p>
+        <button class="rules-primary" id="newRoundButton" type="button">
+          Kartları yeniden dağıt
+        </button>
       </section>
     </div>
   </body>
