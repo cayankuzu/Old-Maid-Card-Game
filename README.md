@@ -24,7 +24,12 @@ Proje yalnızca Python standart kütüphanesini kullanır.
 
 [Papaz Kaçtı'yı tarayıcıda oyna](https://old-maid-card-game.vercel.app/)
 
-Web sürümünde destede yalnızca bir papaz bırakılır. Oyuncu, gerçek masa
-düzeninde üç bilgisayar rakibine karşı sağındaki kapalı elden seçim yapar.
-Dağıtım ve bilgisayar seçimleri her elde rastgeledir; açılan çiftler, oyuncunun
-çektiği kart ve oyuncudan çekilen kart masa üzerinde görünür.
+Web sürümünde destede tek papaz (K♠) bulunur ve üç kişilikli rakibe karşı oynanır:
+
+- **Karakterler:** Ada (Meraklı) öne çıkan kartı sever, Efe (Temkinli) ondan kaçar,
+  Mina (Kumarbaz) yemi umursamaz. Papazı tutarken ipucu verir ya da blöf yaparlar.
+- **Yem:** kendi elinden bir kartı öne çıkarıp senden çekecek rakibi yönlendirebilirsin;
+  masa, o an senden kimin çekeceğini ve karakterini gösterir.
+- **Maç:** ilk kurtulan 3, ikinci 2, üçüncü 1 puan alır; 10 puana ulaşan maçı kazanır.
+- **Kontroller:** fare/dokunmatik ya da `←` `→` + `Enter`; `K` elini karıştırır,
+  `M` ses, `Esc` duraklat. Rakip hızı normal ya da hızlı seçilebilir.
